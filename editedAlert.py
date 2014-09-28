@@ -3,40 +3,46 @@ import time
 
 username = "blah"
 password = "blah"
-body = "This is just an alert that a comment that you previously responded to has been edited.\n\n^(This [bot](https://github.com/Bluesroo/Reddit_Edit_Alert) was made by /u/Bluesroo. Message him with any problems you have.)"
+body = "This is just an alert that a comment that you previously responded to has been edited.\n\n" \
+       "^(This [bot](https://github.com/Bluesroo/Reddit_Edit_Alert) was made by /u/Bluesroo." \
+       " Message him with any problems you have.)"
 
 
-def get_parent(r, child):
-    url = child.link_url
-    parent_id = child.parent_id.partition('_')
-    submission = r.get_submission(url + parent_id[2])
-    parent = submission.comments[0]
-    return parent
+class CommentChecker(object):
+    """ A comment from the Reddit comment stream.
+    """
 
+    def __init__(self, comment):
+        self.comment = comment
+        self.checked_list = []
+        self.edited_list = []
 
-def alert_children(parent):
-    children = parent.replies
-    for child in children:
-        if child.author != 'user_battle_bot':
-            if child.author != parent.author:
-                child.reply(body)
-    return
+    def get_parent(self, r, child):
+        url = child.link_url
+        parent_id = child.parent_id.partition('_')
+        submission = r.get_submission(url + parent_id[2])
+        parent = submission.comments[0]
+        return parent
 
+    def alert_children(self, parent):
+        children = parent.replies
+        for child in children:
+            if child.author != 'user_battle_bot':
+                if child.author != parent.author:
+                    child.reply(body)
+        return
 
 def main():
     r = praw.Reddit("Edit alert bot by /u/Bluesroo")
     print("Logging in...")
     r.login(username, password)
 
-    print("Initializing the lists...")
-    checked_list = []
-    edited_list = []
-
     while True:
         print("Getting fresh comments...")
         comments = r.get_comments('all')
         for comment in comments:
-            print(comment.author)
+            checker = CommentChecker(comment)
+            print(checker.comment.author)
             if comment.id not in checked_list:
                 parent_comment = get_parent(r, comment)
                 if parent_comment.name not in edited_list:
