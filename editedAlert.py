@@ -39,6 +39,7 @@ class CommentChecker(object):
     def child_before_edit(self, child):
         """
         :returns: Bool, whether a child comment was posted before or after the parent was edited.
+
         """
         if self.parent.edited > child.created:
             return True
@@ -69,7 +70,7 @@ def main():
     checked_list = []
     edited_list = []
 
-    print("\nGetting more comments...\n")
+    print("\nGetting comments and responding...\n")
     comments = praw.helpers.comment_stream(r, 'all', limit=5)
     for comment in comments:
         if comment.id not in checked_list and not comment.is_root:
