@@ -1,8 +1,8 @@
 import praw
 import time
 
-username = "blah"
-password = "blah"
+username = "user"
+password = "pass"
 body = "This is just an alert that a comment that you previously responded to has been edited.\n\n" \
        "^(This [bot](https://github.com/Bluesroo/Reddit_Edit_Alert) was made by /u/Bluesroo." \
        " Message him with any problems you have.)"
@@ -14,45 +14,50 @@ class CommentChecker(object):
 
     def __init__(self, comment):
         self.comment = comment
-        self.checked_list = []
-        self.edited_list = []
+        self.parent = comment
 
-    def get_parent(self, r, child):
-        url = child.link_url
-        parent_id = child.parent_id.partition('_')
+    def set_parent(self, r):
+        url = self.comment.permalink
+        parent_id = self.comment.parent_id.partition('_')
+        if parent_id[0] == 't3':
+            self.parent = None
+            return False
         submission = r.get_submission(url + parent_id[2])
-        parent = submission.comments[0]
-        return parent
+        self.parent = submission.comments[0]
+        return True
 
-    def alert_children(self, parent):
-        children = parent.replies
+    def alert_children(self):
+        children = self.parent.replies
         for child in children:
-            if child.author != 'user_battle_bot':
-                if child.author != parent.author:
-                    child.reply(body)
-        return
+            try:
+                if child.author != username:
+                    if child.author != self.parent.author:
+                        print("\tto " + str(child.name))
+                        #child.reply(body)
+            except AttributeError:
+                children = child.comments
+
 
 def main():
     r = praw.Reddit("Edit alert bot by /u/Bluesroo")
     print("Logging in...")
     r.login(username, password)
+    checked_list = []
+    edited_list = []
 
     while True:
-        print("Getting fresh comments...")
-        comments = r.get_comments('all')
+        print("\nGetting more comments...\n")
+        comments = praw.helpers.comment_stream(r, 'all', limit=500)
         for comment in comments:
-            checker = CommentChecker(comment)
-            print(checker.comment.author)
             if comment.id not in checked_list:
-                parent_comment = get_parent(r, comment)
-                if parent_comment.name not in edited_list:
-                    if parent_comment.edited:
-                        print("Alerting children...")
-                        alert_children(parent_comment)
-                edited_list.append(parent_comment.id)
+                responder = CommentChecker(comment)
+                if responder.set_parent(r):
+                    if responder.parent.name not in edited_list:
+                        if responder.parent.edited:
+                            print("Responding...")
+                            responder.alert_children()
+                        edited_list.append(responder.parent.id)
             checked_list.append(comment.id)
-        print("Sleeping...")
-        time.sleep(30)
 
 if __name__ == "__main__":
     main()
